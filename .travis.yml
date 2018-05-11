@@ -1,0 +1,36 @@
+env:
+  global:
+    # Set at the root level as this is ignored when set under matrix.env.
+    - GCC_VERSION="4.9"
+
+matrix:
+  include:
+    - os: linux
+      jdk: oraclejdk8
+      language: generic
+    - os: osx
+      osx_image: xcode9.3
+      language: generic
+
+script: gradle/buildViaTravis.sh
+before_cache:
+  - rm -f $HOME/.gradle/caches/modules-2/modules-2.lock
+notifications:
+  email: false
+cache:
+  directories:
+    - $HOME/.gradle/caches/
+    - $HOME/.gradle/wrapper/
+
+before_install:
+- if [ "$TRAVIS_OS_NAME" == "linux" ]; then sudo add-apt-repository -y ppa:ubuntu-toolchain-r/test; fi
+- if [ "$TRAVIS_OS_NAME" == "linux" ]; then sudo apt-get update -qq; fi
+- if [ "$TRAVIS_OS_NAME" == "linux" ]; then sudo apt-get install -qq g++-$GCC_VERSION; fi
+- if [ "$TRAVIS_OS_NAME" == "linux" ]; then sudo apt-get install -qq gcc-$GCC_VERSION; fi
+- if [ "$TRAVIS_OS_NAME" == "linux" ]; then sudo ln -s -v -f $(which g++-$GCC_VERSION) /usr/bin/g++; fi
+- if [ "$TRAVIS_OS_NAME" == "linux" ]; then sudo ln -s -v -f $(which gcc-$GCC_VERSION) /usr/bin/gcc; fi
+
+env:
+  global:
+  - secure: "yiLIjEuzHJu3fy3unGPqx/3cW2oUfKmmyH5UWxNiQJGJ9AianP3rC1V/tXJLs6r9VvfK4bsJqpvzL7SbaRjYzTlGvsTT8EnC2Sh4VF2ppHEF7JfJLI+SsTGnAPJ3IxtsMwivzwVsA1ISzokCLBOR171pZgEjQ+NH9+3+nafcOTTXkgRzq5+Kaj4jQl89E1d1x/2bWm/hZz16euGLA+H5Qh3wAQi2kf53q+etLVZ0P2+Ba/ILkWBJNoduAYRcNDushfjr8IU/Pv+PbKdbBhRHKzy3q+mUv8vq8suoMRMG/wDr5oTqv9giqYlVw7OpSNN2fUBBB2uaLH+7v93FwiLlQ5QTy3TrJ7mAp0SEv5/QdHdS0LbRu58WBOlLGMSDbmYQyG8JssxhT3jL5US1t7/qxiF6ygaayaUi5a+muQCgtN0+NMHN+LHcDF3YZI1PTP6BciyyGwm068q2rHrwcfck1cMCOHnYQCHD5Zu/8WA82TGdZpWmympZq+GP43RNPVoUcyivHS6/R/Iqbtxdu7/hVXUBi7m6vIJmbCDCcPKz45ZMjn3oeMsqh3fDVVMkZqY2xer8gh/LQOroj9HpDlMWWM7jaMIT3yf4cuUf0HUmBkhaa2ED6IuhOzncFTA6nM+mgAkmVuUHXzQ5VSCT6B1tZGqjmnEYtXaCSBtWW4inAkg="
+  - secure: "LYywk8ycvyq81cddMEOz9dbQyds2LJCccx12oRR6JAe/GlhCuyOF9KnTYLq9c97+ajs5qpV9AaYgp/kVA9DUD6KrXBeJTeh/C5+mGfMYcmFadb6mxHNcK3LVuCVFK2oQqJQBpgsvoemkTWKXj46FX9H2Sq2eI7tHLqocEokqdQcOiix8dIsrIdR7vQs4ctzuAA9DshXmc06Nd+2gwuN5KTC1qZ3xYMdr3wAKAf0MJQXHyWreh+TFC3AdZLhvKt31yUyhgWOE0/M3yn+Aikah8EwDL0uek1E0tc3Sd8wPsqJW2RUapfd59M6VXL/O/noz2teItkR00cxCSyy+cN2A9q0KGiUY5uDy1+EIYkDTnLo319iKmzRSa0wIdJK2U8N9Ao/Cut3rtnHOXCkNkDDI6hGz/P6VC1MDM/1j0c3A14ufdgubKd8nzhh/6z2r++o8SgF5IKTifwuXS+wJBHsCFgmuacOBu7cVz+PWVl8sOy98igBk8F9vRe4RWc9KoKjFyz/fWuifEhKMBHUlv1syI3y9/NAw1wBOPhxlqhmb1ua2WA4iFrYR+UXqlKAphphOlbVBGW+8kIymocP3uD1Zfh0DZ/v/Wq8M15iN/+pLXLBKO9eHRhhNNhXbrZY0NVsVS4sf2SlHr/jo3GOHKZ+x4CVY+nSSzOrSCzAGtSoJH5U="

@@ -1,0 +1,122 @@
+plugins {
+    id 'java'
+    id 'maven'
+    id 'maven-publish'
+    id 'com.google.osdetector' version '1.4.0'
+    id 'com.jfrog.bintray' version '1.8.0'
+    id 'com.cisco.external-build' version '1.10'
+}
+
+group = 'io.netifi.flatbuffers'
+version = '1.9.0'
+description = 'Memory Efficient Serialization Library'
+
+def intDir = file("${buildDir}/external-build")
+def outputDir = file("${buildDir}/install")
+
+model {
+    components {
+        flatc(com.cisco.gradle.externalbuild.ExternalNativeExecutableSpec) {
+            buildConfig(com.cisco.gradle.externalbuild.tasks.CMake) {
+                // Uncomment for easier debugging
+                redirectOutput = false
+
+                cmakeRoot 'flatbuffers'
+                cmakeArgs "-GUnix Makefiles",
+                        "-DCMAKE_INSTALL_PREFIX=${outputDir}",
+                        "-DCMAKE_BUILD_TYPE=Release",
+                        "-DFLATBUFFERS_BUILD_TESTS=OFF",
+                        "-DFLATBUFFERS_BUILD_FLATLIB=OFF",
+                        "-DFLATBUFFERS_BUILD_FLATHASH=OFF"
+
+                targets 'flatc', 'install/strip'
+
+                inputs.dir 'src'
+                inputs.file 'CMakeLists.txt'
+                outputs.dir outputDir
+
+                workingDir intDir
+                environment = [
+                    'PATH': toolChainPath,
+                ]
+            }
+        }
+    }
+}
+
+def flatcPrefix = "flatc-${osdetector.os}-${osdetector.arch}"
+def pathToArtifact = "${buildDir}/artifacts/${flatcPrefix}.exe"
+
+task buildArtifacts(type: Copy, dependsOn: ':flatcExecutable') {
+    from("${outputDir}/bin") {
+        rename "flatc*", "${flatcPrefix}.exe"
+    }
+    into "${buildDir}/artifacts"
+}
+
+artifacts {
+    archives(pathToArtifact as File) {
+        classifier osdetector.os + "-" + osdetector.arch
+        type "exe"
+        extension "exe"
+        builtBy buildArtifacts
+    }
+}
+
+publishing {
+    publications {
+        maven(MavenPublication) {
+            artifactId 'flatc'
+            artifact(pathToArtifact) {
+                classifier osdetector.os + "-" + osdetector.arch
+                builtBy buildArtifacts
+            }
+        }
+    }
+}
+
+task versionArchives {
+    description = "Creates a continuous-delivery friendly version number for the service"
+
+    // Default to building SNAPSHOT versions unless the build was executed with the -PreleaseType={type} command line parameter
+    if (project.hasProperty('releaseType')) {
+        if (project.releaseType == 'release') {
+            project.ext.set("releaseVersion", "${project.version}");
+        } else if (project.releaseType == 'snapshot') {
+            project.ext.set("releaseVersion", "${project.version}-SNAPSHOT");
+        } else {
+            throw new RuntimeException("Invalid releaseType specified:  Must be 'release' or 'snapshot'!")
+        }
+    } else {
+        logger.info("Property 'releaseType' was not specified.  Defaulting to 'snapshot'!")
+        project.ext.set("releaseVersion", "${project.version}-SNAPSHOT");
+    }
+
+    logger.info("Setting artifact version: ${releaseVersion}")
+    project.version = "${releaseVersion}"
+}
+build.dependsOn versionArchives
+
+bintray {
+    user = project.hasProperty('bintrayUser') ? project.property('bintrayUser') : System.getenv('BINTRAY_USER')
+    key = project.hasProperty('bintrayKey') ? project.property('bintrayKey') : System.getenv('BINTRAY_KEY')
+    publications = ['maven']
+
+    publish = (osdetector.os == 'osx')
+
+    pkg {
+        repo = 'netifi-oss'
+        name = 'flatc'
+        userOrg = 'netifi'
+        desc = "${project.description}"
+        websiteUrl = 'https://github.com/netifi/flatbuffers'
+        issueTrackerUrl = 'https://github.com/netifi/flatbuffers/issues'
+        vcsUrl = 'https://github.com/netifi/flatbuffers.git'
+        licenses = ['Apache-2.0']
+        githubRepo = 'netifi/flatbuffers'
+
+        version {
+            name = "${releaseVersion}"
+        }
+    }
+}
